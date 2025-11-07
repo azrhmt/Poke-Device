@@ -1,0 +1,626 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Pokémon Set Builder v2.7</title>
+<meta name="description" content="Pokédex builder v2.7 — live PokéAPI, vibrant theme, STAB+coverage+utility moves, abilities with explanations, shiny sprite, Poké Ball loader."/>
+<style>
+:root{
+  --bg-default-start:#05060a; --bg-default-end:#000;
+  --card-bg:#0b1116;
+  --muted:#9fb0c6;
+  --glass:rgba(255,255,255,0.02);
+  --radius:14px;
+  --accent:#6ee7b7;
+  --accent-2:#64b5ff;
+  --text:#eaf6ff;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0;font-family:Inter, system-ui, -apple-system,"Segoe UI",Roboto,Arial,sans-serif;-webkit-font-smoothing:antialiased}
+body{
+  background: linear-gradient(180deg,var(--bg-default-start) 0%, var(--bg-default-end) 100%);
+  color:var(--text); min-height:100vh; display:flex;align-items:flex-start;justify-content:center;padding:28px;
+  transition: background .7s ease, color .4s ease;
+}
+.page{width:100%;max-width:1200px}
+.container{display:grid;grid-template-columns:420px 1fr;gap:18px}
+.card, .build { background:var(--card-bg); border-radius:var(--radius); padding:18px; box-shadow:0 10px 40px rgba(0,0,0,.6); border:1px solid rgba(255,255,255,0.03) }
+.header{display:flex;align-items:center;gap:12px}
+h1{margin:0;font-size:18px}
+.meta{margin-left:auto;color:var(--muted);font-size:13px}
+
+/* Left card */
+.searchRow{display:flex;gap:8px;margin-top:10px}
+input[type="search"]{flex:1;padding:10px 12px;border-radius:10px;border:1px solid rgba(255,255,255,0.03);background:transparent;color:var(--text);font-size:15px}
+.ghost{background:transparent;border:1px solid rgba(255,255,255,0.04);color:var(--muted);padding:8px 10px;border-radius:10px;cursor:pointer}
+.suggestions{margin-top:10px;display:flex;flex-direction:column;gap:6px;max-height:220px;overflow:auto}
+.suggestions button{background:transparent;border:1px solid rgba(255,255,255,0.03);color:var(--muted);padding:8px;border-radius:8px;text-align:left;cursor:pointer}
+.leftTop{display:flex;gap:12px;align-items:center;margin-top:14px}
+.spriteWrap{width:140px;height:140px;border-radius:12px;background:var(--glass);display:flex;align-items:center;justify-content:center;padding:8px;flex-shrink:0;overflow:hidden}
+.spriteWrap img{max-width:100%;max-height:100%;object-fit:contain;border-radius:8px}
+.titleBlock{min-width:0}
+.pokemonName{font-weight:800;font-size:20px}
+.types{color:var(--muted);font-size:13px;margin-top:6px}
+.stats{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.stat{background:rgba(255,255,255,0.02);padding:8px 10px;border-radius:8px;color:var(--muted);min-width:70px;text-align:center}
+.smallSprites{display:flex;gap:16px;margin-top:12px}
+.smallSprites .sRow{display:flex;flex-direction:column;align-items:center}
+.smallSprites img{width:72px;height:72px;border-radius:8px;background:var(--glass)}
+/* Right build panel */
+.buildHeader{display:flex;justify-content:space-between;align-items:center}
+.section{margin-top:12px}
+.section h2{margin:0;color:var(--accent);font-size:16px}
+.abilities{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+.abilityBtn{background:transparent;border:1px solid rgba(255,255,255,0.04);padding:8px 10px;border-radius:8px;color:var(--muted);cursor:pointer}
+.abilityBtn.hidden::after{content:" • hidden";font-size:11px;color:rgba(255,255,255,0.35);margin-left:6px}
+.abilityBtn.active{background:var(--accent);color:#00201a;border-color:transparent}
+.abilityExplain{margin-top:8px;color:var(--muted);font-size:13px}
+.movesGrid{display:grid;grid-template-columns:1fr;gap:8px;margin-top:8px;max-height:340px;overflow:auto;padding-right:6px}
+.moveRow{display:flex;align-items:center;gap:8px;background:var(--glass);padding:10px;border-radius:8px}
+.moveName{font-weight:700}
+.moveMeta{margin-left:auto;color:var(--muted);font-size:13px}
+.pickBtn{background:transparent;border:1px solid rgba(255,255,255,0.04);padding:6px 8px;border-radius:8px;color:var(--muted);cursor:pointer}
+.pickBtn.selected{background:var(--accent-2);color:#001;border-color:transparent}
+.chosenMoves{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.chip{background:rgba(255,255,255,0.02);padding:6px 10px;border-radius:999px;color:var(--muted);font-weight:600}
+.recommendBlock{display:flex;gap:12px;align-items:center;margin-top:10px;flex-wrap:wrap}
+.recommendItem{background:rgba(255,255,255,0.02);padding:10px;border-radius:10px;color:var(--muted)}
+.note{color:var(--muted);font-size:13px;margin-top:8px}
+.label{font-size:12px;padding:4px 8px;border-radius:999px;background:rgba(255,255,255,0.03);color:var(--muted);margin-right:8px}
+
+/* Poké Ball loader */
+.loaderWrap{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none}
+.pokeball{width:72px;height:72px;border-radius:50%;position:relative;border:6px solid #fff;background:linear-gradient(180deg,#fff 0%, #ddd 100%);box-shadow:0 6px 30px rgba(0,0,0,0.6)}
+.pokeball::before{content:'';position:absolute;left:0;right:0;top:50%;height:12px;background:#000;transform:translateY(-50%)}
+.pokeball::after{content:'';position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:26px;height:26px;border-radius:50%;background:#fff;border:4px solid #000}
+.pokeball.spin{animation:spin 1s linear infinite}
+@keyframes spin{0%{transform:rotate(0)}100%{transform:rotate(360deg)}}
+
+/* responsive */
+@media (max-width:980px){ .container{grid-template-columns:1fr;gap:12px} .spriteWrap{width:110px;height:110px} .smallSprites img{width:56px;height:56px} }
+</style>
+</head>
+<body>
+  <div id="loader" class="loaderWrap" style="display:none;z-index:9999">
+    <div class="pokeball" id="pokeball"></div>
+  </div>
+
+  <div id="page" class="page">
+    <div class="container">
+      <!-- LEFT -->
+      <div class="card" role="region" aria-label="Pokémon card">
+        <div class="header">
+          <h1>Pokédex Builder</h1>
+          <div class="meta">v2.7 — Live PokéAPI</div>
+        </div>
+
+        <div class="searchRow" role="search">
+          <input id="search" placeholder="Search Pokémon (e.g. gengar)" aria-label="Search Pokémon" />
+          <button id="clearBtn" class="ghost" title="Clear">Clear</button>
+        </div>
+
+        <div id="suggestions" class="suggestions" aria-live="polite"></div>
+
+        <div class="leftTop">
+          <div class="spriteWrap" id="spriteWrap">
+            <img id="spriteNormal" alt="artwork (normal)" src="" />
+          </div>
+          <div class="titleBlock">
+            <div id="name" class="pokemonName">—</div>
+            <div id="types" class="types">—</div>
+            <div id="genNote" class="note"></div>
+          </div>
+        </div>
+
+        <div class="smallSprites">
+          <div class="sRow">
+            <div style="font-size:13px;color:var(--muted)">Normal</div>
+            <img id="spriteNormalSmall" src="" alt="normal small" />
+          </div>
+          <div class="sRow">
+            <div style="font-size:13px;color:var(--muted)">Shiny</div>
+            <img id="spriteShinySmall" src="" alt="shiny small" />
+          </div>
+        </div>
+
+        <div id="stats" class="stats" aria-live="polite"></div>
+      </div>
+
+      <!-- RIGHT -->
+      <div class="build" role="region" aria-label="Build details">
+        <div class="buildHeader">
+          <h2>Recommended Build</h2>
+          <div style="color:var(--muted);font-size:13px">Interactive — STAB → Coverage → Utility</div>
+        </div>
+
+        <div class="section">
+          <strong>Abilities</strong>
+          <div id="abilities" class="abilities" aria-live="polite"></div>
+          <div id="abilityExplain" class="abilityExplain"></div>
+        </div>
+
+        <div class="section">
+          <strong>Nature & EVs</strong>
+          <div id="natureBlock" style="margin-top:8px"></div>
+        </div>
+
+        <div class="section">
+          <strong>Held item</strong>
+          <div class="recommendBlock">
+            <div id="heldItem" class="recommendItem">—</div>
+            <div id="heldReason" class="note"></div>
+          </div>
+        </div>
+
+        <div class="section">
+          <strong>Moves</strong>
+          <div id="movesList" class="movesGrid" aria-live="polite"></div>
+          <div id="chosenMoves" class="chosenMoves"></div>
+          <div id="movesNote" class="note">Pick up to 4 moves. Builder: STAB → Coverage → Utility → Filler.</div>
+        </div>
+
+        <div class="section">
+          <strong>Why these?</strong>
+          <div id="reasoning" class="note"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script>
+/* v2.7 full script
+ - fixes chooseNature and other missing functions
+ - adds loader and robust error handling
+ - smart moves: STAB -> coverage (against pokemon's weaknesses) -> utility -> filler
+*/
+
+const API = 'https://pokeapi.co/api/v2';
+const TYPE_CHART = {
+  normal:{rock:0.5,ghost:0,steel:0.5}, fire:{fire:0.5,water:0.5,grass:2,ice:2,bug:2,rock:0.5,dragon:0.5,steel:2},
+  water:{fire:2,water:0.5,grass:0.5,ground:2,rock:2,dragon:0.5}, electric:{water:2,electric:0.5,grass:0.5,ground:0,flying:2,dragon:0.5},
+  grass:{fire:0.5,water:2,grass:0.5,poison:0.5,ground:2,flying:0.5,bug:0.5,rock:2,dragon:0.5,steel:0.5},
+  ice:{fire:0.5,water:0.5,grass:2,ice:0.5,ground:2,flying:2,dragon:2,steel:0.5},
+  fighting:{normal:2,ice:2,rock:2,dark:2,steel:2,poison:0.5,flying:0.5,psychic:0.5,bug:0.5,ghost:0},
+  poison:{grass:2,poison:0.5,ground:0.5,rock:0.5,ghost:0.5,steel:0}, ground:{fire:2,electric:2,grass:0.5,poison:2,flying:0,bug:0.5,rock:2,steel:2},
+  flying:{electric:0.5,grass:2,fighting:2,bug:2,rock:0.5,steel:0.5}, psychic:{fighting:2,poison:2,psychic:0.5,dark:0,steel:0.5},
+  bug:{fire:0.5,grass:2,fighting:0.5,poison:0.5,flying:0.5,psychic:2,ghost:0.5,dark:2,steel:0.5,fairy:0.5},
+  rock:{fire:2,ice:2,fighting:0.5,ground:0.5,flying:2,bug:2,steel:0.5}, ghost:{normal:0,psychic:2,ghost:2,dark:0.5},
+  dragon:{dragon:2,steel:0.5,fairy:0}, dark:{fighting:0.5,psychic:2,ghost:2,dark:0.5,fairy:0.5},
+  steel:{fire:0.5,water:0.5,electric:0.5,ice:2,rock:2,fairy:2,steel:0.5}, fairy:{fire:0.5,fighting:2,poison:0.5,dragon:2,dark:2,steel:0.5}
+};
+
+// DOM refs
+const loaderWrap = document.getElementById('loader');
+const pokeball = document.getElementById('pokeball');
+const searchEl = document.getElementById('search'), clearBtn = document.getElementById('clearBtn'), suggestionsEl = document.getElementById('suggestions');
+const nameEl = document.getElementById('name'), typesEl = document.getElementById('types'), spriteNormal = document.getElementById('spriteNormal');
+const spriteNormalSmall = document.getElementById('spriteNormalSmall'), spriteShinySmall = document.getElementById('spriteShinySmall'), statsEl = document.getElementById('stats');
+const abilitiesEl = document.getElementById('abilities'), abilityExplainEl = document.getElementById('abilityExplain');
+const natureBlockEl = document.getElementById('natureBlock'), heldItemEl = document.getElementById('heldItem'), heldReasonEl = document.getElementById('heldReason');
+const movesListEl = document.getElementById('movesList'), chosenMovesEl = document.getElementById('chosenMoves'), reasoningEl = document.getElementById('reasoning');
+
+let allPokemon = [], currentPokemon=null, moveDetails=[], chosenMoves=[], abilityDetails=[], chosenAbility=null;
+
+// loader helpers
+function showLoader(){ loaderWrap.style.display='flex'; pokeball.classList.add('spin'); }
+function hideLoader(){ pokeball.classList.remove('spin'); loaderWrap.style.display='none'; }
+
+// load index
+async function loadIndex(){ try { const r = await fetch(`${API}/pokemon?limit=20000`); const d = await r.json(); allPokemon = d.results.map(x=>x.name); } catch(e){ console.warn('index load failed', e); allPokemon=[]; } }
+loadIndex();
+
+// helpers
+const cap = s => s ? s[0].toUpperCase()+s.slice(1) : '';
+function el(tag,cls,txt){ const e=document.createElement(tag); if(cls) e.className=cls; if(txt!==undefined) e.textContent=txt; return e; }
+function clamp(n,a,b){ return Math.max(a, Math.min(b,n)); }
+
+// type multiplier calc
+function getTypeMultiplier(attType, defTypes){
+  let mult = 1;
+  for (const dt of defTypes){
+    const m = (TYPE_CHART[attType] && TYPE_CHART[attType][dt]) ? TYPE_CHART[attType][dt] : 1;
+    mult *= m;
+  }
+  return mult;
+}
+
+// autocomplete
+searchEl.addEventListener('input', ()=>{
+  const q = searchEl.value.trim().toLowerCase(); suggestionsEl.innerHTML=''; if(!q) return;
+  const prefix = allPokemon.filter(n=>n.startsWith(q)).slice(0,10);
+  const substr = allPokemon.filter(n=>!n.startsWith(q) && n.includes(q)).slice(0,8);
+  const combined = [...prefix,...substr].slice(0,12);
+  combined.forEach(name=>{
+    const b = el('button','', cap(name));
+    b.onclick = ()=> selectPokemon(name);
+    suggestionsEl.appendChild(b);
+  });
+});
+clearBtn.addEventListener('click', ()=>{ searchEl.value=''; suggestionsEl.innerHTML=''; resetUI(); resetTheme(); });
+
+// select
+async function selectPokemon(name){
+  if(!name) return;
+  searchEl.value = name; suggestionsEl.innerHTML=''; resetUI();
+  showLoader();
+  try {
+    const r = await fetch(`${API}/pokemon/${encodeURIComponent(name.toLowerCase())}`);
+    if(!r.ok) throw new Error('Pokémon not found');
+    const poke = await r.json();
+    currentPokemon = poke;
+    renderHeader(poke);
+
+    // theme based on non-shiny art
+    const artUrl = poke.sprites.other?.['official-artwork']?.front_default || poke.sprites.front_default || '';
+    applyVibrantThemeFromImage(artUrl);
+
+    // fetch abilities details
+    abilityDetails = await Promise.all(poke.abilities.map(async a=>{
+      try {
+        const ar = await fetch(a.ability.url);
+        const ad = await ar.json();
+        const en = (ad.effect_entries||[]).find(e=>e.language && e.language.name==='en');
+        const short = en ? en.short_effect : (ad.flavor_text_entries?.find(f=>f.language.name==='en')?.flavor_text || 'No description');
+        return { name: a.ability.name, hidden: a.is_hidden, short };
+      } catch(e) {
+        return { name: a.ability.name, hidden: a.is_hidden, short: 'No description' };
+      }
+    }));
+
+    // fetch moves
+    const moveNames = Array.from(new Set(poke.moves.map(m=>m.move.name)));
+    moveDetails = await fetchMoveDetails(moveNames);
+
+    // compute recommendations
+    const rec = computeRecommendations(poke, moveDetails, abilityDetails);
+
+    // render abilities + auto-select recommended
+    renderAbilities(abilityDetails, rec.recommendedAbility);
+
+    // nature & evs
+    renderNature(rec.nature, rec.evs);
+
+    // held item
+    renderHeldItem(rec.heldItem, rec.heldReason);
+
+    // moves list & default picks
+    renderMoves(moveDetails, rec.defaultMoves, rec.categoryByMove);
+
+    // reasoning
+    reasoningEl.textContent = rec.reasoning;
+
+  } catch(err){
+    console.error(err);
+    alert('Error: '+(err.message||err));
+  } finally {
+    hideLoader();
+  }
+}
+
+// render header
+function renderHeader(poke){
+  nameEl.textContent = cap(poke.name);
+  typesEl.textContent = poke.types.map(t=>cap(t.type.name)).join(' / ');
+  const art = poke.sprites.other?.['official-artwork']?.front_default || poke.sprites.front_default || '';
+  const artShiny = poke.sprites.other?.['official-artwork']?.front_shiny || poke.sprites.front_shiny || '';
+  spriteNormal.src = art || '';
+  spriteNormalSmall.src = art || '';
+  spriteShinySmall.src = artShiny || '';
+  // stats
+  statsEl.innerHTML = '';
+  poke.stats.forEach(s=>{
+    const d = el('div','stat');
+    d.innerHTML = `<div style="font-weight:800">${s.base_stat}</div><div style="font-size:12px;color:var(--muted)">${cap(s.stat.name.replace('special-','Sp.'))}</div>`;
+    statsEl.appendChild(d);
+  });
+}
+
+// fetch move details
+async function fetchMoveDetails(names){
+  const out=[];
+  for (let i=0;i<names.length;i++){
+    const n = names[i];
+    try {
+      const r = await fetch(`${API}/move/${encodeURIComponent(n)}`);
+      if(!r.ok) continue;
+      const m = await r.json();
+      out.push({
+        name: m.name,
+        type: m.type?.name || '',
+        power: m.power,
+        accuracy: m.accuracy,
+        category: m.damage_class?.name || '',
+        pp: m.pp,
+        priority: m.priority || 0,
+        effect: m.effect_entries?.find(e=>e.language.name==='en')?.short_effect || ''
+      });
+    } catch(e){ /* ignore */ }
+  }
+  out.sort((a,b)=> (b.power||0)-(a.power||0) || a.name.localeCompare(b.name));
+  return out;
+}
+
+// choose nature mapping
+function chooseNature(plus, minus){
+  const n = [
+    {name:'Adamant', plus:'attack', minus:'special-attack'},
+    {name:'Modest', plus:'special-attack', minus:'attack'},
+    {name:'Jolly', plus:'speed', minus:'special-attack'},
+    {name:'Timid', plus:'speed', minus:'attack'},
+    {name:'Bold', plus:'defense', minus:'attack'},
+    {name:'Calm', plus:'special-defense', minus:'attack'},
+    {name:'Impish', plus:'defense', minus:'special-attack'},
+    {name:'Hasty', plus:'speed', minus:'defense'},
+    {name:'Rash', plus:'special-attack', minus:'special-defense'},
+    {name:'Careful', plus:'special-defense', minus:'special-attack'},
+    {name:'Hardy', plus:null, minus:null}
+  ];
+  let pick = n.find(x=>x.plus===plus && x.minus!==plus);
+  if (!pick) pick = n.find(x=>x.plus===plus) || n[0];
+  return { name: pick.name, plus: pick.plus ? cap(pick.plus.replace('-','.')) : '—', minus: pick.minus ? cap(pick.minus.replace('-','.')) : '—' };
+}
+
+// recommend ability (keywords)
+function recommendAbility(abilities, style){
+  const keywordsPhysical = ['huge-power','pure-power','guts','reckless','moxie','iron-fist','strong-jaw','sheer-force','technician','quick-feet','steadfast'];
+  const keywordsSpecial = ['download','adaptability','mega-launcher','analytic','tinted-lens','magic-guard','serene-grace'];
+  const general = ['adaptability','huge-power','pure-power','guts','reckless','moxie','sheer-force','technician','download','magic-guard','levitate','pressure','intimidate'];
+  const kw = style==='Physical' ? keywordsPhysical.concat(general) : keywordsSpecial.concat(general);
+  for (const k of kw){
+    const found = abilities.find(a => a.name.toLowerCase().includes(k));
+    if (found) return found;
+  }
+  return abilities.find(a=>!a.hidden) || abilities[0] || null;
+}
+
+// recommend held item
+function recommendHeldItem(stats){
+  if (stats.style === 'Physical'){
+    if (stats.speed > 110) return {item:'Choice Scarf', reason:'High Speed physical attacker — Scarf helps sweeping'};
+    if (stats.atk > 120) return {item:'Choice Band', reason:'High Attack — Choice Band boosts physical damage'};
+    return {item:'Life Orb', reason:'General physical attacker boost (costs HP)'};
+  } else {
+    if (stats.speed > 110) return {item:'Choice Scarf', reason:'High Speed special attacker'};
+    if (stats.spatk > 120) return {item:'Choice Specs', reason:'High Sp. Atk — Choice Specs boosts special damage'};
+    return {item:'Life Orb', reason:'General special attacker boost (costs HP)'};
+  }
+}
+
+// compute recommendations
+function computeRecommendations(poke, moves, abilityList){
+  const s={}; poke.stats.forEach(x=> s[x.stat.name]=x.base_stat);
+  const atk=s.attack||0, spatk=s['special-attack']||0, speed=s.speed||0, def=s.defense||0, spdef=s['special-defense']||0;
+  const style = (atk >= spatk) ? 'Physical' : 'Special';
+  const pairs=[['attack',atk],['special-attack',spatk],['speed',speed],['defense',def],['special-defense',spdef]];
+  pairs.sort((a,b)=>b[1]-a[1]);
+  const top = pairs[0][0], bottom = pairs[pairs.length-1][0];
+  const nature = chooseNature(top, bottom);
+  const evs = (style==='Physical') ? '252 Atk / 252 Spe / 4 HP' : '252 SpA / 252 Spe / 4 HP';
+
+  // weakness types
+  const pokeTypes = poke.types.map(t=>t.type.name);
+  const weaknessTypes = [];
+  for (const atkType in TYPE_CHART){
+    const mult = getTypeMultiplier(atkType, pokeTypes);
+    if (mult > 1) weaknessTypes.push({type:atkType,mult});
+  }
+  weaknessTypes.sort((a,b)=>b.mult-a.mult);
+  const weaknessTypeNames = weaknessTypes.map(w=>w.type);
+
+  const damaging = moves.filter(m => m.category && m.category.toLowerCase()!=='status' && m.power);
+  const status = moves.filter(m => m.category && m.category.toLowerCase()==='status');
+
+  // STAB
+  const stab = damaging.filter(d => pokeTypes.includes(d.type)).sort((a,b)=> (b.power||0)-(a.power||0));
+  const styleCat = style === 'Physical' ? 'physical' : 'special';
+  const stabPreferred = stab.filter(s=> s.category && s.category.toLowerCase()===styleCat);
+
+  // coverage: prefer moves that are super-effective vs at least one of this pokemon's weaknesses
+  const coverageCandidates = damaging.filter(d => !pokeTypes.includes(d.type)).map(d=>{
+    let coversWeakness=false;
+    for (const wt of weaknessTypeNames){
+      const mult = (TYPE_CHART[d.type] && TYPE_CHART[d.type][wt]) ? TYPE_CHART[d.type][wt] : 1;
+      if (mult > 1) coversWeakness=true;
+    }
+    return {...d, coversWeakness};
+  }).sort((a,b)=> (b.coversWeakness - a.coversWeakness) || (b.power||0)-(a.power||0));
+
+  // utility detection
+  const useful = ['toxic','protect','roost','swords-dance','calm-mind','substitute','thunder-wave','will-o-wisp','rest','taunt','yawn','stealth-rock','leech-seed','rapid-spin','defog'];
+  const utilMove = status.find(s=> useful.includes(s.name));
+
+  // build picks
+  const picks=[];
+  if (stabPreferred.length) picks.push(stabPreferred[0]);
+  if (picks.length < 2 && stab.length > 0){
+    if (!picks.find(p=>p.name===stab[0].name)) picks.push(stab[0]);
+    if (picks.length < 2 && stab.length > 1) picks.push(stab[1]);
+  }
+  // coverage
+  for (let i=0;i<coverageCandidates.length && picks.length<4;i++){
+    if (!picks.find(p=>p.name===coverageCandidates[i].name)) picks.push(coverageCandidates[i]);
+  }
+  // utility
+  if (picks.length<4 && utilMove) picks.push(utilMove);
+  // remaining high power
+  const remaining = damaging.filter(d=>!picks.find(p=>p.name===d.name)).sort((a,b)=> (b.power||0)-(a.power||0));
+  for (let k=0;k<remaining.length && picks.length<4;k++) picks.push(remaining[k]);
+
+  // ability & held item recommend
+  const recommendedAbility = recommendAbility(abilityList, style);
+  const held = recommendHeldItem({atk,spatk,speed,def,spdef,style});
+
+  const reasoning = `Logic: STAB (favoring ${style.toLowerCase()} STAB) → Coverage (prioritize moves that counter this Pokémon's weaknesses) → Utility (setup/status) → Filler (highest-power). Ability and item are heuristic recommendations.`;
+
+  // category map
+  const categoryByMove = {};
+  picks.forEach(m=>{
+    if (pokeTypes.includes(m.type)) categoryByMove[m.name] = 'STAB';
+    else if (m.coversWeakness || weaknessTypeNames.includes(m.type)) categoryByMove[m.name] = 'Coverage';
+    else if (status.find(s=>s.name===m.name)) categoryByMove[m.name] = 'Utility';
+    else categoryByMove[m.name] = 'Filler';
+  });
+
+  return { style, primary: top, nature, evs, defaultMoves: picks.slice(0,4), recommendedAbility, heldItem: held.item, heldReason: held.reason, reasoning, categoryByMove };
+}
+
+// render abilities
+function renderAbilities(list, recommended){
+  abilitiesEl.innerHTML=''; abilityExplainEl.textContent=''; chosenAbility=null;
+  list.forEach(a=>{
+    const btn = el('button','abilityBtn', cap(a.name.replace('-',' ')));
+    if (a.hidden) btn.classList.add('hidden');
+    btn.onclick = ()=> {
+      [...abilitiesEl.querySelectorAll('.abilityBtn')].forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      chosenAbility = a;
+      abilityExplainEl.textContent = `${cap(a.name.replace('-',' '))}${a.hidden ? ' (hidden)' : ''} — ${a.short}`;
+    };
+    abilitiesEl.appendChild(btn);
+    if (recommended && recommended.name === a.name){
+      btn.classList.add('active');
+      chosenAbility = a;
+      abilityExplainEl.textContent = `${cap(a.name.replace('-',' '))}${a.hidden ? ' (hidden)' : ''} — ${a.short}`;
+    }
+  });
+  if (list.length===0) abilitiesEl.textContent='—';
+}
+
+// render nature & evs
+function renderNature(nature, evs){
+  natureBlockEl.innerHTML = `<div class="recommendItem">${nature.name} (↑${nature.plus} • ↓${nature.minus})</div><div class="note" style="margin-top:8px">Suggested EVs: ${evs}</div>`;
+}
+
+// render held item
+function renderHeldItem(item, reason){
+  heldItemEl.textContent = item || '—'; heldReasonEl.textContent = reason || '';
+}
+
+// render moves
+function renderMoves(moveDetails, defaultMoves, categoryMap){
+  movesListEl.innerHTML=''; chosenMoves=[]; chosenMovesEl.innerHTML='';
+  const defaultNames = defaultMoves.map(m=>m.name);
+  moveDetails.forEach(m=>{
+    const row = el('div','moveRow');
+    const label = el('span','label', (categoryMap && categoryMap[m.name]) ? categoryMap[m.name] : '');
+    const nameEl = el('div','moveName', cap(m.name.replace('-',' ')));
+    const meta = el('div','moveMeta', `${cap(m.type)} ${m.power? '• ' + m.power : ''} ${m.category? '• ' + cap(m.category) : ''}`);
+    const btn = el('button','pickBtn','Pick');
+    btn.onclick = ()=> togglePick(btn,m);
+    if (defaultNames.includes(m.name) && chosenMoves.length < 4){
+      btn.classList.add('selected'); btn.textContent='Picked'; chosenMoves.push(m);
+    }
+    row.appendChild(label); row.appendChild(nameEl); row.appendChild(meta); row.appendChild(btn);
+    movesListEl.appendChild(row);
+  });
+  refreshChosenMoves();
+}
+function togglePick(btn, move){
+  const idx = chosenMoves.findIndex(m=>m.name===move.name);
+  if (idx >= 0){
+    chosenMoves.splice(idx,1); btn.classList.remove('selected'); btn.textContent='Pick';
+  } else {
+    if (chosenMoves.length >= 4){
+      const removed = chosenMoves.shift();
+      // unselect its button
+      const rows = Array.from(movesListEl.querySelectorAll('.moveRow'));
+      for (const r of rows){
+        const t = r.querySelector('.moveName');
+        if (t && t.textContent.toLowerCase() === removed.name.replace('-',' ')){
+          const b = r.querySelector('.pickBtn'); if (b){ b.classList.remove('selected'); b.textContent='Pick'; }
+        }
+      }
+    }
+    chosenMoves.push(move); btn.classList.add('selected'); btn.textContent='Picked';
+  }
+  refreshChosenMoves();
+}
+function refreshChosenMoves(){
+  chosenMovesEl.innerHTML=''; chosenMoves.forEach(m=>{
+    const c = el('div','chip', cap(m.name.replace('-',' ')) + (m.power ? ' • ' + m.power : ''));
+    chosenMovesEl.appendChild(c);
+  });
+}
+
+// reset UI
+function resetUI(){
+  nameEl.textContent='—'; typesEl.textContent='—'; spriteNormal.src=''; spriteNormalSmall.src=''; spriteShinySmall.src='';
+  statsEl.innerHTML=''; abilitiesEl.innerHTML=''; abilityExplainEl.textContent=''; natureBlockEl.innerHTML='';
+  heldItemEl.textContent='—'; heldReasonEl.textContent=''; movesListEl.innerHTML=''; chosenMovesEl.innerHTML=''; reasoningEl.textContent='';
+  chosenMoves=[]; moveDetails=[]; abilityDetails=[];
+}
+
+// THEME: vibrant when selected, dark by default
+function resetTheme(){
+  document.body.style.background = `linear-gradient(180deg,var(--bg-default-start) 0%, var(--bg-default-end) 100%)`;
+  document.documentElement.style.setProperty('--accent','#6ee7b7'); document.documentElement.style.setProperty('--accent-2','#64b5ff');
+}
+async function applyVibrantThemeFromImage(url){
+  if (!url) return;
+  try {
+    const color = await extractDominantColor(url);
+    const dark = shadeColor(color, -60);
+    document.body.style.background = `radial-gradient(circle at 20% 10%, ${color} 0%, ${dark} 30%, #000 70%)`;
+    document.documentElement.style.setProperty('--accent', color);
+    document.documentElement.style.setProperty('--accent-2', shadeColor(color, -30));
+    const lum = luminanceFromHex(color);
+    if (lum > 0.6) document.documentElement.style.setProperty('--text','#061017'); else document.documentElement.style.setProperty('--text','#eaf6ff');
+  } catch(e){ console.warn('apply theme failed', e); }
+}
+
+// color extraction (canvas)
+function extractDominantColor(url){
+  return new Promise((resolve,reject)=>{
+    if (!url) return resolve('#2b2b2b');
+    const img = new Image(); img.crossOrigin='Anonymous';
+    img.onload = ()=>{
+      try {
+        const canvas = document.createElement('canvas');
+        const w = Math.min(120, img.width), h = Math.min(120, img.height);
+        canvas.width=w; canvas.height=h;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img,0,0,w,h);
+        const data = ctx.getImageData(0,0,w,h).data;
+        let r=0,g=0,b=0,count=0;
+        for (let i=0;i<data.length;i+=4){
+          const a = data[i+3]; if (a<125) continue;
+          r+=data[i]; g+=data[i+1]; b+=data[i+2]; count++;
+        }
+        if (count===0) return resolve('#2b2b2b');
+        r=Math.round(r/count); g=Math.round(g/count); b=Math.round(b/count);
+        resolve(rgbToHex(r,g,b));
+      } catch(err){ reject(err); }
+    };
+    img.onerror = ()=> {
+      // fallback fetch blob
+      fetch(url).then(resp=>resp.blob()).then(blob=>{
+        const reader = new FileReader();
+        reader.onload = ()=> img.src = reader.result;
+        reader.onerror = ()=> reject(new Error('blob read fail'));
+        reader.readAsDataURL(blob);
+      }).catch(err=> reject(err));
+    };
+    img.src = url;
+  });
+}
+function rgbToHex(r,g,b){ return '#' + [r,g,b].map(x=> x.toString(16).padStart(2,'0')).join(''); }
+function shadeColor(hex, amt){
+  const num = parseInt(hex.slice(1),16); let r = (num>>16)+amt, g=((num>>8)&0xFF)+amt, b=(num&0xFF)+amt;
+  r=clamp(Math.round(r),0,255); g=clamp(Math.round(g),0,255); b=clamp(Math.round(b),0,255);
+  return rgbToHex(r,g,b);
+}
+function luminanceFromHex(hex){
+  const num = parseInt(hex.slice(1),16); const r=(num>>16)/255, g=((num>>8)&0xFF)/255, b=(num&0xFF)/255;
+  const a=[r,g,b].map(v=> v<=0.03928 ? v/12.92 : Math.pow((v+0.055)/1.055,2.4));
+  return 0.2126*a[0] + 0.7152*a[1] + 0.0722*a[2];
+}
+
+// ENTER to search
+searchEl.addEventListener('keydown',(e)=>{ if (e.key==='Enter'){ const q=searchEl.value.trim().toLowerCase(); if(q) selectPokemon(q); } });
+searchEl.focus();
+
+// end
+</script>
+</body>
+</html>
